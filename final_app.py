@@ -55,11 +55,14 @@ with st.sidebar:
 
     # Save flagged images to CSV
     if st.button("Download Flagged Images as CSV"):
-        flagged_df = pd.DataFrame(st.session_state.flagged_images, columns=df.columns)
-        csv = flagged_df.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode()).decode()
-        href = f'<a href="data:file/csv;base64,{b64}" download="flagged_images.csv">Download CSV</a>'
-        st.markdown(href, unsafe_allow_html=True)
+        if st.session_state.flagged_images:
+            flagged_df = pd.DataFrame(st.session_state.flagged_images)
+            csv = flagged_df.to_csv(index=False)
+            b64 = base64.b64encode(csv.encode()).decode()
+            href = f'<a href="data:file/csv;base64,{b64}" download="flagged_images.csv">Download Flagged Images</a>'
+            st.markdown(href, unsafe_allow_html=True)
+        else:
+            st.warning("No images flagged to download.")
 
 # Apply filters
 filtered_df = df.copy()
@@ -85,26 +88,14 @@ else:
             image = download_image(row_data['url'])
             if image is not None:
                 with col:
-                    st.markdown(
-                        f"""
-                        <div style="position:relative;">
-                            <button style="position:absolute;top:5px;left:5px;z-index:10;background-color:red;color:white;border:none;padding:3px;cursor:pointer;"
-                            onClick="flagImage('{row_data.name}')">🚩</button>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                    # Display image and flagging button
                     st.image(image, use_column_width=True)
                     st.markdown(f"**Attribute:** {row_data['attribute_name']}")
                     st.markdown(f"**Prediction:** {row_data['prediction']}")
                     st.markdown(f"**Confidence:** {row_data['confidence']:.2f}")
-
-# JavaScript function for flagging images
-flag_image_js = """
-<script>
-    const flagImage = (rowId) => {
-        Streamlit.setComponentValue({ flaggedId: rowId });
-    };
-</script>
-"""
-st.markdown(flag_image_js, unsafe_allow_html=True)
+                    if st.button("Flag", key=f"flag_{row_data.name}"):
+                        if row_data.to_dict() not in st.session_state.flagged_images:
+                            st.session_state.flagged_images.append(row_data.to_dict())
+                            st.success("Image flagged!")
+                        else:
+                            st.warning("Image already flagged.")
