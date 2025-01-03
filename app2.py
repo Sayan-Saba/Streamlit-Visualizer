@@ -23,6 +23,26 @@ def download_image(url):
 if "flagged_images" not in st.session_state:
     st.session_state.flagged_images = []
 
+# Theme toggle
+theme = st.sidebar.radio("Select Theme", ["Light", "Dark"], index=0)
+if theme == "Dark":
+    st.markdown(
+        """
+        <style>
+            body {
+                background-color: #0e1117;
+                color: white;
+            }
+            .stButton > button {
+                background-color: #333;
+                color: white;
+                border: none;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # Sidebar for filters
 st.sidebar.title("Filters")
 attribute_filter = st.sidebar.selectbox("Filter by Attribute Name", options=["All"] + list(df['attribute_name'].unique()))
@@ -46,19 +66,16 @@ st.title("Image Visualization and Flagging")
 if filtered_df.empty:
     st.warning("No images found for the selected filters.")
 else:
+    cols_per_row = 5  # Number of images per row
+    cols = st.columns(cols_per_row)
     for idx, row in filtered_df.iterrows():
-        # Download and display the image
         image = download_image(row['url'])
         if image is not None:
-            col1, col2, col3 = st.columns([3, 4, 1])
-            with col1:
-                st.image(image, use_column_width=True, caption=f"Distributor: {row['entity_name']}")
-            with col2:
-                st.write(f"**Attribute Name:** {row['attribute_name']}")
-                st.write(f"**Prediction:** {row['prediction']}")
-                st.write(f"**Confidence:** {row['confidence']:.2f}")
-            with col3:
-                if st.button(f"Flag Image {idx}", key=f"flag_{idx}"):
+            col = cols[idx % cols_per_row]  # Rotate across columns
+            with col:
+                # Display flag button overlapping the image
+                flag_key = f"flag_{idx}"
+                if st.button("🚩", key=flag_key, help="Flag this image"):
                     st.session_state.flagged_images.append({
                         "url": row['url'],
                         "attribute_name": row['attribute_name'],
@@ -67,6 +84,10 @@ else:
                         "confidence": row['confidence']
                     })
                     st.success(f"Image flagged: {row['url']}")
+                st.image(image, use_column_width=True)
+                st.write(f"**Attribute:** {row['attribute_name']}")
+                st.write(f"**Prediction:** {row['prediction']}")
+                st.write(f"**Confidence:** {row['confidence']:.2f}")
 
 # Save flagged data
 st.sidebar.markdown("---")
